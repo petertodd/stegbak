@@ -1,0 +1,175 @@
+stegback v0.1
+
+About
+=====
+
+stegback is a tool to steganographically hide data, typically backups, within
+an encrypted partition. stegback does not work like a typical steganographic
+scheme; rather than trying to inefficiently hide data with methods like adding
+random noise to images, stegback simply encrypts the data you want to hide in a
+way that if you know the key, you can find it again.
+
+While at first glance this seems absurd - encrypted data looks like random
+noise and everyone knows that random noise sticks out like a sore thumb -
+consider the following scenario:
+
+Alice is a salesman for Acme Arms, and wants to visit her client Bob, who
+unfortunately happens to be located in Examizstan. She knows the customs
+officials might examine her laptop, so she encrypts the harddrive on it using
+the standard Linux LUKS disk-encryption feature.
+
+She gets to the border, but Mallory waves her off to a small room, and has her
+wait, without her laptop. Sure enough Mallory wants to know what is on her
+laptop, and unfortunately, Examizstan isn't known for their legal system, so
+after some perfunctory protests, Alice finally gives in and gives Mallory her
+encryption key.
+
+Mallory now examines the harddrive at will, finding marketing material for Acme
+Arm's latest weaponry, and some confidential sales figures. Of course, there's
+nothing wrong with selling arms in Examizstan, so he looks even more closely,
+noticing that the free space in the encrypted partition on Alice's harddrive is
+filled with random data.
+
+Alice however, simply explains that of course it is: "I have to keep my sales
+figures confidential, so I always encrypt my laptop. That random data is
+probably just from the last time I reformatted the harddrive; we all know that
+encrypted data decrypted with the wrong symetric key is just random garbage."
+
+Mallory accepts this explanation, and sends Alice on her way - after installing
+a hardware keylogger of course.
+
+Finally Alice meets up with Bob, and removes the harddrive from her laptop.
+Now, using Bob's computer, Alice can run stegback. She enter's in her other
+secret password. The stegback program now scans the whole harddrive looking for
+data encrypted with that password. Finally she has the data she was really
+trying to get into the country: in actuality, "Acme Arms" is a double-entendre,
+and its real business is something the regime isn't too happy to have provided:
+cheap prosthetics.
+
+
+Typical Usage Scenario
+======================
+
+Suppose you have two computers, which we will call private, and top-secret. You
+want to backup the data on both of them. Your secure computer has data that
+should be encrypted, but if push came to shove, you would be willing to reveal
+the key. A good example is financial data; not something you want
+dumpster-dived, but ultimately the authorities can find it out anyway.
+Ultimately everyone should be using full-disk encryption anyway, as your
+average harddrive ends up full of passwords and other things that can be used
+to attack you. However, in addition to your private data, you also have your
+top-secret computer, which is full of stuff you *really* want kept secret,
+
+It's already suspicious enough that you have a computer whose encryption
+password you claim to not know; having backup disks in addition to that, chock
+full of encrypted data, just makes it worse. That's where stegback comes in.
+
+First you make a backup of your private computer, to an external harddrive.
+This harddrive is encrypted, and is big enough to store all the data you need
+backed up from both computers. Next you connect the external harddrive to your
+top-secret computer. Now you run stegback to fill the empty space with the
+backup of your top-secret computer. You should probably repeat this all over
+again with a second backup drive for redundency.
+
+If you need to update the backups of your top-secret computer, just run
+stegback again, and it'll fill that empty space again. If you need to update
+the backups of your private computer, run them as you normally do. Chances are
+the free-space has been overwritten, so now go and re-run stegback on the
+top-secret computer.
+
+
+Usage Summary
+=============
+
+tar | stegback hide /mounted_backup_partition/innocuous_filename
+sudo stegback verify --hash (hash) --location (location) /dev/block_device
+sudo stegback find /dev/block_device | tar xfv -
+
+
+Detailed Usage
+==============
+
+stegback works only with streams of data, typically the output of tar or cpio.
+It assumes that the filesystem it is writing data too doesn't actually delete
+the data itself after a file is deleted. This statement is true for for most
+filesystems. However, newer solid state disks support the "TRIM" command, which
+improves performance by allowing the operating system to ask the drive to erase
+large regions of the drive at once, typically after deleting a file. Do NOT use
+stegback with a flash drive unless you are sure that TRIM is disabled!
+
+Remember: stegback only truely works as stenography if the encrypted data it
+creates is written to a partition that already uses encryption. If not you have
+no plausible explanation for where the random-looking data came from.
+
+
+Using LUKS disk-encryption
+==========================
+
+On that note, let's first do a re-cap of how to use disk-encryption on Linux.
+This tutorial assumes you have a partition /dev/sdb1, which you would like to
+use for backups. There are actually two main disk encryption methods on Linux,
+dm-crypt, and LUKS, however the latter is a wrapper around the former.  This
+tutorial will only explain how to use LUKS.
+
+First format the partition:
+
+sudo cryptsetup luksFormat /dev/sdb1
+
+Use a password you are willing to reveal if needed.
+
+
+Hiding data
+===========
+
+To create a backup:
+
+  $ tar jcfv - to_be_backed_up | stegback hide /mounted_backup_partition/innocuous_filename
+
+You'll be prompted to enter your password. Your data is now being encrypted
+with your password and written to a new file created at "innocuous_filename" In
+addition a special "marker" has been securely derived from your password, in
+such a way that the marker looks like random data as well. Later on stegback
+will look for that marker to find your data again.
+
+Remember: picking an innocuous-looking filename is important as it's likely
+that the filename text itself will still be present on the drive after
+deletion. Depending on the filesystem it may also be possible to figure out how
+large the file was. Using lost+found/#somenumber is one possible, plausible,
+filename.
+
+When finished stegback will output the md5 hash of the cleartext it wrote, as
+well as the block where the header has been stored. Don't worry, we're only
+using md5 as a checksum - it's not used internally for anything cryptographic.
+
+  Done!
+  md5: d41d8cd98f00b204e9800998ecf8427e
+  Header location: 0x1234567 on /dev/sdb1
+  To verify backup run the following:
+  sudo stegback verify --hash d41d8cd98f00b204e9800998ecf8427e --location 0x1234567 /dev/mapper/foo-crypt
+  /$
+
+Unmount the partition where "innocuous_filename" resides as soon as possible as
+other operations may corrupt the hidden data. You don't have to do anything
+else as stegback automatically syncs everything to disk when finished, and then
+deletes the file it created to store the encrypted data for you.
+
+You should now verify the backup to make sure everything worked correctly. You
+should be able to use the command it provided as-is:
+
+  $ sudo stegback verify --hash d41d8cd98f00b204e9800998ecf8427e --location 0x1234567 /dev/mapper/foo-crypt
+  Success!
+
+If you've followed the advice above,
+
+Be careful with this device. Mounting it as read-only is probably safe, but
+there is no protection against something overwriting the hidden data. On many
+machines even plugging the device in can be risky, as it will be automatically
+mounted.
+
+
+Finding data
+============
+
+  $ sudo stegback find /dev/mapper/foo-crypt
+
+After entering your password

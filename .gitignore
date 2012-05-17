@@ -1,0 +1,14 @@
+*.o
+.deps
+stegbak
+INSTALL
+missing
+install-sh
+depcomp
+configure
+config.log
+config.status
+autom4te.cache
+Makefile
+Makefile.in
+aclocal.m4
