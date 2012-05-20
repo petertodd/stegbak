@@ -30,6 +30,7 @@
 
 extern char *program_name;
 
+// Command line options
 struct options {
     bool verbose;
 
@@ -37,6 +38,8 @@ struct options {
 
     // Shared between verify and find
     off_t location;
+
+    size_t blocksize;
 };
 extern struct options options;
 
@@ -47,7 +50,7 @@ void verbose_exit(char *str,...);
 // As above but using perror(str)
 void perror_exit(char *str,...);
 
-#define MAX_PASSPHRASE_LENGTH 1024
-char *obtain_passphrase_from_stream(FILE *stream);
+// As it says on the tin... secure memory isn't used.
+char *buf_to_hex(void *buf,size_t len);
 
 #endif

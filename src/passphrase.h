@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 Peter Todd
+/* Passphrase handling and key derivation
+ * Copyright (C) 2012 Peter Todd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9,14 +10,20 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HIDE_H
-#define HIDE_H
+#ifndef PASSPHRASE_H
+#define PASSPHRASE_H
 
-int hide(struct options *options,block_key *key,char *output_file,FILE *input);
+#define MAX_PASSPHRASE_LENGTH 1024
+char *obtain_passphrase_from_stream(FILE *stream);
+
+#define BASIC_KEY_LENGTH 32
+
+// Turn a passphrase into a strong key.
+void *derive_key_from_passphrase(char *passphrase);
 
 #endif

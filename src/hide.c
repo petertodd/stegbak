@@ -16,16 +16,20 @@
  */
 
 #include "common.h"
+#include "disk.h"
 #include "hide.h"
 
 #include <sys/stat.h>
+#include <time.h>
 
-int hide(char *output_file){
+int hide(struct options *options,block_key *key,char *output_file,FILE *input){
     FILE *output = NULL;
+    struct block *block;
+    uint64_t stream_timestamp;
 
-    if (options.verbose) {
+    if (options->verbose) {
         if (output_file){
-            fprintf(stderr,"Hiding data in %s\n",output_file);
+            fprintf(stderr,"Hiding data in file '%s'\n",output_file);
         } else {
             fprintf(stderr,"Hiding data in standard output.\n");
         }
@@ -38,18 +42,59 @@ int hide(char *output_file){
         struct stat buf;
         // Check if the output file already exists
         if (!stat(output_file,&buf))
-           verbose_exit("Output '%s' already exists\n",output_file);
+           verbose_exit("Output '%s' already exists",output_file);
         if (!(output = fopen(output_file,"w")))
             perror_exit("Error while creating output file");
     }
 
+    // Create the header
+    stream_timestamp = time(NULL);
 
-    // Sync-to-disk and delete out output.
+    block = calloc(1,options->blocksize);
+    block->version = BLOCK_FORMAT_VERSION;
+    block->type = PAYLOAD_TYPE_STREAM_HEADER;
+    block->padding = 0;
+    block->stream_header_payload.timestamp = stream_timestamp;
+
+    encipher_block(block,options->blocksize,key);
+
+    if (fwrite(block,options->blocksize,1,output) != 1){
+        perror_exit("Failed while writing stream header block to output");
+    }
+    free(block);
+
+
+    // Encipher data
+    uint64_t idx = 0;
+    while (!feof(input)){
+        struct block *block = calloc(1,options->blocksize);
+
+        block->version = BLOCK_FORMAT_VERSION;
+        block->type = PAYLOAD_TYPE_CHUNK;
+        block->padding = 0;
+        int l = fread(block->chunk_payload.data,1,max_chunklength(block,options->blocksize),input);
+
+        block->chunk_payload.timestamp = stream_timestamp;
+
+        block->chunk_payload.length = l;
+        block->chunk_payload.idx = idx;
+        idx += l;
+
+        encipher_block(block,options->blocksize,key);
+
+        if (fwrite(block,options->blocksize,1,output) != 1){
+            perror_exit("Failed while writing chunk block to output");
+        }
+
+        free(block);
+    }
+
+    // Sync-to-disk and delete the output.
     if (output_file){
-        if (options.verbose) fprintf(stderr,"Syncing\n");
+        if (options->verbose) fprintf(stderr,"Syncing\n");
         if (fsync(fileno(output)))
             perror_exit("Error while syncing output to disk");
-        if (options.verbose) fprintf(stderr,"Unlinking\n");
+        if (options->verbose) fprintf(stderr,"Unlinking\n");
         if (unlink(output_file))
             perror_exit("Couldn't remove output file");
     }

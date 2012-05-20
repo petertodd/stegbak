@@ -27,7 +27,9 @@ struct options options = {
 
     .passphrase = NULL,
 
-    .location = -1
+    .location = -1,
+
+    .blocksize = 4096
 };
 
 void perror_exit(char *str,...){
@@ -51,26 +53,25 @@ void verbose_exit(char *str,...){
     exit(EXIT_FAILURE);
 }
 
-char *obtain_passphrase_from_stream(FILE *stream){
-    char *r = gcry_malloc_secure(MAX_PASSPHRASE_LENGTH + 1);
-
-    // Getting the passphrase a character at a time is probably safe as only a
-    // single character should end up on the stack, overwritten by the next one
-    // each time. Still...
-    //
-    // FIXME: look into replacing this with pinentry or something similar
-    int c;
-    int i = 0;
-    while (1) {
-        c = fgetc(stream);
-        if (c == EOF || c == '\n')
-            break;
-        if (i >= MAX_PASSPHRASE_LENGTH)
-            verbose_exit("Passphrase too long; maximum is %d characters",MAX_PASSPHRASE_LENGTH);
-        r[i] = (char)c;
-        i++;
+char *buf_to_hex(void *buf,size_t len){
+    int i;
+    char *r = malloc((len * 2) + 1);
+    for (i = 0; i < len; i++){
+        unsigned char w = ((unsigned char *)buf)[i];
+        // lower nibble
+        if ((w & 0x0f) < 10){
+            r[i*2 + 1] = '0' + (w & 0x0f);
+        } else {
+            r[i*2 + 1] = 'a' + (w & 0x0f) - 10;
+        };
+        // upper nibble
+        w >>= 4;
+        if ((w & 0x0f) < 10){
+            r[i*2 + 0] = '0' + (w & 0x0f);
+        } else {
+            r[i*2 + 0] = 'a' + (w & 0x0f) - 10;
+        };
     }
-    r[i] = 0;
-
+    r[i*2] = 0;
     return r;
 }

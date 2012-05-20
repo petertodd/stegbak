@@ -19,7 +19,9 @@
 
 #include "main.h"
 
+#include "disk.h"
 #include "hide.h"
+#include "passphrase.h"
 
 void usage(int status){
     if (status != EXIT_SUCCESS)
@@ -35,6 +37,7 @@ Global options:\n\
   --help            display this help and exit\n\
   --version         display version and exit\n\
 \n\
+  -b, --blocksize=SIZE    specify filesystem blocksize\n\
   -p, --passphrase=PASS   specify passphrase\n\
   -v, --verbose           explain what is being done\n\
 \n\
@@ -96,6 +99,7 @@ int main(int argc,char **argv){
     // Option parsing
     while (1){
         static struct option long_options[] = {
+            {"blocksize", required_argument, NULL, 'b'},
             {"passphrase", required_argument,NULL,'p'},
             {"location", required_argument, NULL, 'l'},
             {"verbose", no_argument, NULL, 'v'},
@@ -105,7 +109,7 @@ int main(int argc,char **argv){
         };
 
         int option_index = 0;
-        int c = getopt_long(argc, argv, "l:p:vh", long_options, &option_index);
+        int c = getopt_long(argc, argv, "b:l:p:vh", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -119,11 +123,26 @@ int main(int argc,char **argv){
                     printf(" with arg %s",optarg);
                 printf("\n");
                 break;
+            case 'b':
+                if (sscanf(optarg,"%ld",(long int *)&options.blocksize) != 1){
+                    verbose_exit("Invalid blocksize %s",optarg);
+                };
+                if (options.blocksize < sizeof(struct block)){
+                    verbose_exit("Blocksize too small. (got %ld, minimum %ld)",
+                            options.blocksize,sizeof(struct block));
+                }
+                // FIXME: shouldn't be hardcoded
+                if (options.blocksize % 16){
+                    verbose_exit("Blocksize must be a multiple of the cipher block size, 16");
+                }
+                break;
             case 'l':
                 if (sscanf(optarg,"%lx",(long int *)&options.location) != 1){
-                    fprintf(stderr,"Invalid location %s\n",optarg);
-                    exit(EXIT_FAILURE);
+                    verbose_exit("Invalid location %s",optarg);
                 };
+                if (options.location < 0){
+                    verbose_exit("Location must be a positive number");
+                }
                 break;
             case 'p':
                 // If the user is specifying their passphrase on the command
@@ -156,13 +175,17 @@ int main(int argc,char **argv){
             verbose_exit("Passphrases don't match");
     }
 
+    void *key;
+    key = derive_key_from_passphrase(options.passphrase);
+    //printf("%s\n",buf_to_hex(key,BASIC_KEY_LENGTH));
+
     if (argc <= optind){
         fprintf(stderr,"No command specified.\n");
         usage(EXIT_FAILURE);
     }
 
     if (!strcmp(argv[optind],"hide")){
-        return hide(argv[optind + 1]);
+        return hide(&options,key,argv[optind + 1],stdin);
     }
     else if (!strcmp(argv[optind],"verify")){
         //return verify_main(argc - optind,argv + optind);
