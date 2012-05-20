@@ -118,9 +118,8 @@ bool decipher_block(struct block *block,size_t blocksize,block_key *key){
 
     gcry_cipher_close(hd);
 
-    convert_block_to_host_endian(block);
-
     if (!memcmp(block->mac,calculated_mac,sizeof(block_mac))){
+        convert_block_to_host_endian(block);
         return true;
     } else {
         return false;
