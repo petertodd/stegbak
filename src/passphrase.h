@@ -18,12 +18,17 @@
 #ifndef PASSPHRASE_H
 #define PASSPHRASE_H
 
+#include "disk.h"
+
 #define MAX_PASSPHRASE_LENGTH 1024
 char *obtain_passphrase_from_stream(FILE *stream);
 
-#define BASIC_KEY_LENGTH 32
-
-// Turn a passphrase into a strong key.
-void *derive_key_from_passphrase(char *passphrase);
+// Turn a passphrase into a strong key by repeated hashing.
+//
+// Why hashing rather than an existing well-known key derivation function? We
+// want the algorithm to be simple enough to be implemented in an hour or two
+// should the user need their data, but don't have a copy of stegbak. All the
+// well-known KDF's are complex, especially memory hard ones.
+block_key *derive_key_from_passphrase(const char *passphrase,uint64_t iterations);
 
 #endif

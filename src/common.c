@@ -25,6 +25,7 @@ char *program_name = NULL;
 struct options options = {
     .verbose = false,
     .passphrase = NULL,
+    .key_strengthening_iterations_exponent = 6,
     .location = -1,
     .blocksize = 4096,
     .oldest_acceptable_timestamp = 0

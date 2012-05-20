@@ -41,9 +41,22 @@ char *obtain_passphrase_from_stream(FILE *stream){
     return r;
 }
 
-void *derive_key_from_passphrase(char *passphrase){
-    void *key = gcry_malloc_secure(BASIC_KEY_LENGTH);
+block_key *derive_key_from_passphrase(const char *passphrase,uint64_t iterations){
+    gcry_md_hd_t hd;
+    block_key *key = gcry_malloc_secure(sizeof(block_key));
+    uint64_t i;
+
+    assert(!gcry_md_open(&hd,GCRY_MD_SHA256,GCRY_MD_FLAG_SECURE));
+
     gcry_md_hash_buffer(GCRY_MD_SHA256,key,passphrase,strlen(passphrase));
+    gcry_md_write(hd,passphrase,strlen(passphrase));
+    memcpy(key,gcry_md_read(hd,0),sizeof(block_key));
+
+    for (i = 1; i < iterations; i++){
+        gcry_md_reset(hd);
+        gcry_md_write(hd,key,sizeof(block_key));;
+        memcpy(key,gcry_md_read(hd,0),sizeof(block_key));
+    }
 
     return key;
 }

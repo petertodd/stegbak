@@ -36,6 +36,7 @@ struct options {
     bool verbose;
 
     char *passphrase;
+    unsigned long key_strengthening_iterations_exponent;
 
     // Shared between verify and find
     off_t location;

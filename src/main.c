@@ -39,6 +39,9 @@ Global options:\n\
   --version         display version and exit\n\
 \n\
   -b, --blocksize=SIZE    specify filesystem blocksize\n\
+                          (default: %ld)\n\
+  -i, --iterations=N      strengthen passphrase by 10^N iterations\n\
+                          (default: %ld)\n\
   -p, --passphrase=PASS   specify passphrase\n\
   -v, --verbose           explain what is being done\n\
 \n\
@@ -48,7 +51,9 @@ hide:\n\
 find and verify:\n\
   -l, --location=OFFSET   look for header at given offset,\n\
                           if header not found, exit immediately\n\
-", program_name,program_name,program_name);
+", program_name,program_name,program_name,
+            options.blocksize,
+            options.key_strengthening_iterations_exponent);
     }
     exit(status);
 }
@@ -101,6 +106,7 @@ int main(int argc,char **argv){
     while (1){
         static struct option long_options[] = {
             {"blocksize", required_argument, NULL, 'b'},
+            {"iterations", required_argument,NULL,'i'},
             {"passphrase", required_argument,NULL,'p'},
             {"location", required_argument, NULL, 'l'},
             {"verbose", no_argument, NULL, 'v'},
@@ -110,7 +116,7 @@ int main(int argc,char **argv){
         };
 
         int option_index = 0;
-        int c = getopt_long(argc, argv, "b:l:p:vh", long_options, &option_index);
+        int c = getopt_long(argc, argv, "b:i:l:p:vh", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -135,6 +141,15 @@ int main(int argc,char **argv){
                 // FIXME: shouldn't be hardcoded
                 if (options.blocksize % 16){
                     verbose_exit("Blocksize must be a multiple of the cipher block size, 16");
+                }
+                break;
+            case 'i':
+                if (sscanf(optarg,"%lx",
+                            (long int *)&options.key_strengthening_iterations_exponent) != 1){
+                    verbose_exit("Invalid iterations exponent %s",optarg);
+                };
+                if (options.key_strengthening_iterations_exponent < 0){
+                    verbose_exit("Iterations exponent must be a positive number");
                 }
                 break;
             case 'l':
@@ -174,11 +189,18 @@ int main(int argc,char **argv){
 
         if (strcmp(options.passphrase,passphrase2))
             verbose_exit("Passphrases don't match");
+        free(passphrase2);
     }
 
-    void *key;
-    key = derive_key_from_passphrase(options.passphrase);
-    //printf("%s\n",buf_to_hex(key,BASIC_KEY_LENGTH));
+    block_key *key;
+    uint64_t iterations = 1;
+    unsigned long i;
+    for (i = 0; i < options.key_strengthening_iterations_exponent; i++){
+        // I can't believe I have to implement exponentiation by repeated
+        // multiplication...
+        iterations *= 10;
+    }
+    key = derive_key_from_passphrase(options.passphrase,iterations);
 
     if (argc <= optind){
         fprintf(stderr,"No command specified.\n");
