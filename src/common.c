@@ -24,12 +24,10 @@ char *program_name = NULL;
 
 struct options options = {
     .verbose = false,
-
     .passphrase = NULL,
-
     .location = -1,
-
-    .blocksize = 4096
+    .blocksize = 4096,
+    .oldest_acceptable_timestamp = 0
 };
 
 void perror_exit(char *str,...){

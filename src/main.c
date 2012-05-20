@@ -20,6 +20,7 @@
 #include "main.h"
 
 #include "disk.h"
+#include "find.h"
 #include "hide.h"
 #include "passphrase.h"
 
@@ -191,7 +192,7 @@ int main(int argc,char **argv){
         //return verify_main(argc - optind,argv + optind);
     }
     else if (!strcmp(argv[optind],"find")){
-        //return find_main(argc - optind,argv + optind);
+        return find(&options,key,argv[optind +1],stdout);
     }
     else {
         fprintf(stderr,"Invalid command \"%s\" specified.\n",argv[optind]);

@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <gcrypt.h>
 
@@ -40,6 +41,8 @@ struct options {
     off_t location;
 
     size_t blocksize;
+
+    time_t oldest_acceptable_timestamp;
 };
 extern struct options options;
 
