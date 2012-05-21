@@ -31,6 +31,9 @@
 
 extern char *program_name;
 
+#define min(a,b) (((a)<(b))?(a):(b))
+#define max(a,b) (((a)>(b))?(a):(b))
+
 // Command line options
 struct options {
     bool verbose;
@@ -38,12 +41,11 @@ struct options {
     char *passphrase;
     unsigned long key_strengthening_iterations_exponent;
 
-    // Shared between verify and find
-    off_t location;
+    off_t seek;
 
     size_t blocksize;
 
-    time_t oldest_acceptable_timestamp;
+    time_t newer_than;
 };
 extern struct options options;
 
@@ -53,6 +55,9 @@ void verbose_exit(char *str,...);
 
 // As above but using perror(str)
 void perror_exit(char *str,...);
+
+// Convert a time_t to human readable format
+void time_to_human_readable(time_t t,char *s,size_t len);
 
 // As it says on the tin... secure memory isn't used.
 char *buf_to_hex(void *buf,size_t len);

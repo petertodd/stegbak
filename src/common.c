@@ -26,9 +26,9 @@ struct options options = {
     .verbose = false,
     .passphrase = NULL,
     .key_strengthening_iterations_exponent = 6,
-    .location = -1,
+    .seek = 0,
     .blocksize = 4096,
-    .oldest_acceptable_timestamp = 0
+    .newer_than = 0
 };
 
 void perror_exit(char *str,...){
@@ -50,6 +50,12 @@ void verbose_exit(char *str,...){
     fputs(msg,stderr);
     fputs("\n",stderr);
     exit(EXIT_FAILURE);
+}
+
+void time_to_human_readable(time_t t,char *s,size_t len){
+    struct tm tm;
+    localtime_r(&t,&tm);
+    strftime(s,len,"%a, %d %b %Y %H:%M:%S %z",&tm);
 }
 
 char *buf_to_hex(void *buf,size_t len){

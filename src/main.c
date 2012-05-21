@@ -48,9 +48,10 @@ Global options:\n\
 hide:\n\
   --no-delete         don't delete output file when finished\n\
 \n\
-find and verify:\n\
-  -l, --location=OFFSET   look for header at given offset,\n\
-                          if header not found, exit immediately\n\
+find:\n\
+  -s, --seek=OFFSET       seek to OFFSET before looking for stream header\n\
+  -n, --newer-than=SECS   ignore streams with timestamps older than SECS\n\
+                          seconds since the Epoch\n\
 ", program_name,program_name,program_name,
             options.blocksize,
             options.key_strengthening_iterations_exponent);
@@ -108,7 +109,8 @@ int main(int argc,char **argv){
             {"blocksize", required_argument, NULL, 'b'},
             {"iterations", required_argument,NULL,'i'},
             {"passphrase", required_argument,NULL,'p'},
-            {"location", required_argument, NULL, 'l'},
+            {"newer-than", required_argument,NULL,'n'},
+            {"seek", required_argument, NULL, 's'},
             {"verbose", no_argument, NULL, 'v'},
             {"version", no_argument, &print_version, 1},
             {"help", no_argument, NULL, 'h'},
@@ -116,7 +118,7 @@ int main(int argc,char **argv){
         };
 
         int option_index = 0;
-        int c = getopt_long(argc, argv, "b:i:l:p:vh", long_options, &option_index);
+        int c = getopt_long(argc, argv, "b:i:l:n:p:vh", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -152,12 +154,20 @@ int main(int argc,char **argv){
                     verbose_exit("Iterations exponent must be a positive number");
                 }
                 break;
-            case 'l':
-                if (sscanf(optarg,"%lx",(long int *)&options.location) != 1){
-                    verbose_exit("Invalid location %s",optarg);
+            case 's':
+                if (sscanf(optarg,"%lx",(long int *)&options.seek) != 1){
+                    verbose_exit("Invalid seek offset %s",optarg);
                 };
-                if (options.location < 0){
-                    verbose_exit("Location must be a positive number");
+                if (options.seek < 0){
+                    verbose_exit("Seek offset must be a positive number");
+                }
+                break;
+            case 'n':
+                if (sscanf(optarg,"%lx",(long int *)&options.newer_than) != 1){
+                    verbose_exit("Invalid argument to --newer-than %s",optarg);
+                };
+                if (options.newer_than < 0){
+                    verbose_exit("--newer-than argument must be a positive number");
                 }
                 break;
             case 'p':

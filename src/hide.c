@@ -65,7 +65,17 @@ int hide(struct options *options,block_key *key,char *output_file,FILE *input){
 
     // Encipher data
     uint64_t idx = 0;
-    while (!feof(input)){
+    bool have_output_last_block = false;
+    while (!feof(input) && !have_output_last_block){
+        // If the input data happens to be an exact multiple of the maximum
+        // chunk size we still need to output one last chunk with a length of 0
+        // to signal the end of the stream.
+        //
+        // If the input data isn't an exact multiple this code will emit a
+        // harmless additional block that will be ignored.
+        if (feof(input))
+            have_output_last_block = true;
+
         struct block *block = calloc(1,options->blocksize);
 
         block->version = BLOCK_FORMAT_VERSION;

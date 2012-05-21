@@ -19,13 +19,16 @@
 #include "hide.h"
 
 #include <sys/stat.h>
+#include <errno.h>
 
 int find(struct options *options,block_key *key,char *container_path,FILE *output){
     FILE *input;
     struct block *header_block = calloc(1,options->blocksize);
     struct block *block = calloc(1,options->blocksize);
     uint64_t stream_timestamp;
-    size_t idx;
+    off_t pos;
+    off_t pos_of_last_found_block;
+    uint64_t next_block_idx;
 
     if (options->verbose) {
         if (container_path){
@@ -46,46 +49,111 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
 
     // Find a sufficiently recent header
     stream_timestamp = time(NULL);
-    idx = 0;
+    pos = 0;
+
+    // Seek if required
+    if (options->seek > 0){
+        if (fseeko(input,options->seek,SEEK_SET)){
+            if (errno != ESPIPE)
+                perror_exit("Error! Couldn't seek as requested.");
+            // Must be a non-seekable pipe, consume data until we're there
+            while (pos < options->seek){
+                void *buf = malloc(options->blocksize);
+                size_t l = fread(buf,
+                                 min(options->blocksize,options->seek - pos),1,
+                                 input);
+                pos += min(options->blocksize,options->seek - pos);
+                if (l != 1){
+                    perror_exit("Error while seeking in stream");
+                }
+            }
+        }
+        pos = options->seek;
+    }
     while (1){
         size_t l = fread(header_block,options->blocksize,1,input);
         if (l != 1){
             verbose_exit("Couldn't find a valid header");
         }
-        idx += options->blocksize;
 
         if (decipher_block(header_block,options->blocksize,key)){
             if (header_block->version == BLOCK_FORMAT_VERSION
                 && header_block->type == PAYLOAD_TYPE_STREAM_HEADER){
                 if (header_block->stream_header_payload.timestamp
-                        >= options->oldest_acceptable_timestamp){
+                        >= options->newer_than){
                     stream_timestamp = header_block->stream_header_payload.timestamp;
                     if (options->verbose){
-                        fprintf(stderr,"Found header with timestamp %ld\n",stream_timestamp);
+                        char s[256];
+                        time_to_human_readable(stream_timestamp,s,sizeof(s));
+                        fprintf(stderr,"Found header with timestamp %ld (%s) at 0x%lx\n",
+                                stream_timestamp,s,pos);
                     }
                     break;
                 }
             }
         }
+        pos += options->blocksize;
     }
 
     // Find the data
-    idx = 0;
+    pos_of_last_found_block = pos - options->blocksize;
+    next_block_idx = 0;
     while (1){
+        if (pos == pos_of_last_found_block){
+            verbose_exit("Error! Couldn't find all data in input;"\
+                   " wrapped around at position 0x%lx looking for block idx 0x%lx",
+                   pos,next_block_idx);
+        }
         size_t l = fread(block,options->blocksize,1,input);
         if (l != 1){
+            // On end-of-file, wrap to the beginning
+            if (feof(input)){
+                clearerr(input);
+                if (fseeko(input,0,SEEK_SET)){
+                    if (errno == ESPIPE){
+                        // Couldn't seek because our input isn't seekable. (fifo etc.)
+                        verbose_exit("Error! Couldn't find all data in input;"\
+                               " EOF at offset 0x%lx",pos);
+                    }
+                } else {
+                    // Seek successful
+                    pos = 0;
+                    continue;
+                }
+            }
+            // Some other error, or fseeko() failed due to a reason other than ESPIPE
+            perror_exit("Error while trying to find data");
             break;
         }
+        pos += options->blocksize;
 
         if (decipher_block(block,options->blocksize,key)){
-            if (block->version == BLOCK_FORMAT_VERSION
-                && block->type == PAYLOAD_TYPE_CHUNK
-                && block->chunk_payload.timestamp == stream_timestamp
-                && block->chunk_payload.idx == idx){
-                idx += options->blocksize;
-                l = fwrite(block->chunk_payload.data,block->chunk_payload.length,1,output);
-                if (l != 1){
-                    perror_exit("Failed while writing found data to output");
+            if (block->version == BLOCK_FORMAT_VERSION){
+                if (block->type == PAYLOAD_TYPE_CHUNK
+                    && block->chunk_payload.timestamp == stream_timestamp
+                    && block->chunk_payload.idx == next_block_idx){
+                    next_block_idx += block->chunk_payload.length;
+                    l = fwrite(block->chunk_payload.data,block->chunk_payload.length,1,output);
+                    if (l != 1){
+                        perror_exit("Failed while writing found data to output");
+                    }
+
+                    // Detect end of stream.
+                    if (block->chunk_payload.length != max_chunklength(block,options->blocksize))
+                        break;
+                }
+                // Detect header blocks with timestamps newer than the stream
+                // we are currently working on.
+                else if (block->type == PAYLOAD_TYPE_CHUNK
+                        && block->chunk_payload.timestamp > stream_timestamp){
+                    char s[256],s2[256];
+                    time_to_human_readable(block->chunk_payload.timestamp,s,sizeof(s));
+                    fprintf(stderr,\
+"Error! Found a newer header, timestamp %ld (%s) at position 0x%lx\n"\
+"You can restart using this header with the options --seek=0x%lx --newer-than=%ld\n",
+                        block->chunk_payload.timestamp,s,pos,
+                        pos,block->chunk_payload.timestamp);
+                    exit(EXIT_FAILURE);
                 }
             }
         }
