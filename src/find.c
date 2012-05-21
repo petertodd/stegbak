@@ -125,7 +125,6 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
             perror_exit("Error while trying to find data");
             break;
         }
-        pos += options->blocksize;
 
         if (decipher_block(block,options->blocksize,key)){
             if (block->version == BLOCK_FORMAT_VERSION){
@@ -157,6 +156,7 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
                 }
             }
         }
+        pos += options->blocksize;
     }
 
     free(block);
