@@ -103,9 +103,11 @@ int hide(struct options *options,block_key *key,char *output_file,FILE *input){
         if (options->verbose) fprintf(stderr,"Syncing\n");
         if (fsync(fileno(output)))
             perror_exit("Error while syncing output to disk");
-        if (options->verbose) fprintf(stderr,"Unlinking\n");
-        if (unlink(output_file))
-            perror_exit("Couldn't remove output file");
+        if (!options->no_delete){
+            if (options->verbose) fprintf(stderr,"Unlinking\n");
+            if (unlink(output_file))
+                perror_exit("Couldn't remove output file");
+        }
     }
     return 0;
 }

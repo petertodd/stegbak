@@ -46,7 +46,7 @@ Global options:\n\
   -v, --verbose           explain what is being done\n\
 \n\
 hide:\n\
-  --no-delete         don't delete output file when finished\n\
+  --no-delete             don't delete output file when finished\n\
 \n\
 find:\n\
   -s, --seek=OFFSET       seek to OFFSET before looking for stream header\n\
@@ -75,6 +75,7 @@ Bug reports to %s\n\
 int main(int argc,char **argv){
     static int print_version = 0;
     static int print_help = 0;
+    static int set_no_delete = 0;
 
     // Save to be friendly later.
     program_name = strdup(argv[0]);
@@ -110,6 +111,7 @@ int main(int argc,char **argv){
             {"iterations", required_argument,NULL,'i'},
             {"passphrase", required_argument,NULL,'p'},
             {"newer-than", required_argument,NULL,'n'},
+            {"no-delete", no_argument, &set_no_delete, 1},
             {"seek", required_argument, NULL, 's'},
             {"verbose", no_argument, NULL, 'v'},
             {"version", no_argument, &print_version, 1},
@@ -187,6 +189,7 @@ int main(int argc,char **argv){
         }
     }
     if (print_version) version_etc();
+    if (set_no_delete) options.no_delete = true;
 
     // Obtain passphrase, required for all operations.
     if (!options.passphrase){

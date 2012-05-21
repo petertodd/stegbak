@@ -46,6 +46,8 @@ struct options {
     size_t blocksize;
 
     time_t newer_than;
+
+    bool no_delete;
 };
 extern struct options options;
 

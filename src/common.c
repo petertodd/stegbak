@@ -28,7 +28,8 @@ struct options options = {
     .key_strengthening_iterations_exponent = 6,
     .seek = 0,
     .blocksize = 4096,
-    .newer_than = 0
+    .newer_than = 0,
+    .no_delete = false
 };
 
 void perror_exit(char *str,...){
