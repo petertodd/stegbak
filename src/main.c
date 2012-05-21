@@ -165,7 +165,7 @@ int main(int argc,char **argv){
                 }
                 break;
             case 'n':
-                if (sscanf(optarg,"%lx",(long int *)&options.newer_than) != 1){
+                if (sscanf(optarg,"%ld",(long int *)&options.newer_than) != 1){
                     verbose_exit("Invalid argument to --newer-than %s",optarg);
                 };
                 if (options.newer_than < 0){

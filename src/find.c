@@ -80,7 +80,7 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
             if (header_block->version == BLOCK_FORMAT_VERSION
                 && header_block->type == PAYLOAD_TYPE_STREAM_HEADER){
                 if (header_block->stream_header_payload.timestamp
-                        >= options->newer_than){
+                        > options->newer_than){
                     stream_timestamp = header_block->stream_header_payload.timestamp;
                     if (options->verbose){
                         char s[256];
@@ -152,7 +152,7 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
 "Error! Found a newer header, timestamp %ld (%s) at position 0x%lx\n"\
 "You can restart using this header with the options --seek=0x%lx --newer-than=%ld\n",
                         block->chunk_payload.timestamp,s,pos,
-                        pos,block->chunk_payload.timestamp);
+                        pos,block->chunk_payload.timestamp-1);
                     exit(EXIT_FAILURE);
                 }
             }
