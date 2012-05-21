@@ -29,6 +29,10 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
     off_t pos;
     off_t pos_of_last_found_block;
     uint64_t next_block_idx;
+    gcry_md_hd_t stream_hash_hd;
+
+    // Setup for the full stream hash
+    assert(!gcry_md_open(&stream_hash_hd,GCRY_MD_MD5,0));
 
     if (options->verbose) {
         if (container_path){
@@ -137,6 +141,10 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
                         perror_exit("Failed while writing found data to output");
                     }
 
+                    // Add the new data to the stream hash
+                    gcry_md_write(stream_hash_hd,
+                            block->chunk_payload.data,block->chunk_payload.length);
+
                     // Detect end of stream.
                     if (block->chunk_payload.length != max_chunklength(block,options->blocksize))
                         break;
@@ -158,6 +166,17 @@ int find(struct options *options,block_key *key,char *container_path,FILE *outpu
         }
         pos += options->blocksize;
     }
+
+    char str_stream_timestamp[256];
+    time_to_human_readable(stream_timestamp,
+            str_stream_timestamp,sizeof(str_stream_timestamp));
+    fprintf(stderr,
+"Done! Timestamp: %ld - %s\n"\
+"      MD5: %s\n",
+            stream_timestamp,str_stream_timestamp,
+            buf_to_hex(gcry_md_read(stream_hash_hd,0),
+                       gcry_md_get_algo_dlen(GCRY_MD_MD5)));
+
 
     free(block);
     return 0;

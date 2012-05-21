@@ -25,6 +25,10 @@ int hide(struct options *options,block_key *key,char *output_file,FILE *input){
     FILE *output = NULL;
     struct block *block;
     uint64_t stream_timestamp;
+    gcry_md_hd_t stream_hash_hd;
+
+    // Setup for the full stream hash
+    assert(!gcry_md_open(&stream_hash_hd,GCRY_MD_MD5,0));
 
     if (options->verbose) {
         if (output_file){
@@ -83,6 +87,9 @@ int hide(struct options *options,block_key *key,char *output_file,FILE *input){
         block->padding = 0;
         int l = fread(block->chunk_payload.data,1,max_chunklength(block,options->blocksize),input);
 
+        // Add the new data to the stream hash
+        gcry_md_write(stream_hash_hd,block->chunk_payload.data,l);
+
         block->chunk_payload.timestamp = stream_timestamp;
 
         block->chunk_payload.length = l;
@@ -97,6 +104,16 @@ int hide(struct options *options,block_key *key,char *output_file,FILE *input){
 
         free(block);
     }
+
+    char str_stream_timestamp[256];
+    time_to_human_readable(stream_timestamp,
+            str_stream_timestamp,sizeof(str_stream_timestamp));
+    fprintf(stderr,
+"Done! Timestamp: %ld - %s\n"\
+"      MD5: %s\n",
+            stream_timestamp,str_stream_timestamp,
+            buf_to_hex(gcry_md_read(stream_hash_hd,0),
+                       gcry_md_get_algo_dlen(GCRY_MD_MD5)));
 
     // Sync-to-disk and delete the output.
     if (output_file){
