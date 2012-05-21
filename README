@@ -25,6 +25,9 @@ Usage
 
 Don't yet; this software is pre-alpha.
 
+If you do want to forge ahead, you'll need either a standard harddrive, or a
+SSD drive *without* TRIM support. If you don't know what that means, google it.
+
 Notably the commands currently only support writing to files, and the previous
 existence of files on your disk may be something an analysist can detect.
 
