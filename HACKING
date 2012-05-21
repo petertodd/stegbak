@@ -1,1 +1,32 @@
+Autofoo instructions
+--------------------
+
 aclocal && automake --add-missing && autoconf && ./configure && make
+
+Todo
+----
+
+Progress counters and other UI bits.
+
+Write usage document. (detailed!)
+
+Write security document.
+
+
+The big one: Implement data hiding outside of the file system. This will work
+as follows:
+
+Fill disk with dummy blocks:
+
+    stegbak prepare /dev/disk
+
+Format disk as an encrypted drive, put non-sensitive data on it.
+
+Hide now scans disk for dummy blocks that haven't been overwritten yet, and
+hides the data in those blocks:
+
+    stegbak hide /dev/disk
+
+Find works as before:
+
+    stegbak find /dev/disk
