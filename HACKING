@@ -6,6 +6,8 @@ aclocal && automake --add-missing && autoconf && ./configure && make
 Todo
 ----
 
+Get password entry to work correctly.
+
 Progress counters and other UI bits.
 
 Write usage document. (detailed!)
