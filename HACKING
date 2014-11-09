@@ -6,6 +6,8 @@ aclocal && automake --add-missing && autoconf && ./configure && make
 Todo
 ----
 
+http://www.cs.ucdavis.edu/~rogaway/ocb/ enc+auth mode, gpl allowed
+
 Get password entry to work correctly.
 
 Progress counters and other UI bits.

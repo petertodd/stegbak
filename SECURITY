@@ -1,0 +1,68 @@
+Different from rubberhose: this is not deniable encryption, this is steganography.
+
+Password Processing
+-------------------
+
+Explain repeated sha256 hashing
+
+
+Things to prevent:
+
+distinguishing attack - also vulnerable if the container is more
+distinguishable than us! submarine quiet hole analogy
+
+better would be to use cbc-essiv *exactly* the same way that dmcrypt works.
+This implies not allowing file operation, but frankly, that's a good idea. We
+shouldn't encourage the user to do things in an insecure way, and maintaining
+that code will introduce bugs.
+
+Notably, we can use the luks master key as an IV, creating our own master key
+from it and the passphrase. This is the exact same security model as luks
+itself!
+
+Specifically, due to the complexity of the anti-forensics setup in luks, use,
+mkDigest, which is derived from the random key and is therefor itself random.
+That way we don't actually need a dependency on libluks.
+
+
+watermarking attacks
+
+changing the plaintext
+
+attacker may have multiple-time access to hd, so don't reuse iv! also,
+especially important in the "bank-vault" model, reformat the hd each time you
+get it
+
+decrypt-then-authenticate
+
+
+
+use mac to determine what blocks our ours?
+
+marker = H(key|iv|enc_payload)
+
+
+apparently truncating macs to 128bits is safe, CE 6.6
+
+ce 7.2 - order of authentication and encryption, one option is to encrypt the whole block, and have the mac within that encrypted block, searching is then decrypting the whole hd
+
+
+could use partition uuid as iv for salting passwords
+
+http://www.schneier.com/blog/archives/2009/07/another_new_aes.html - use aes128 vs 256
+
+also note the double aes-encrypt option to double the rounds
+
+
+possible name for later block device version: stegblock or stegloop
+
+metaluks? stegluks? stegdelux
+
+
+can we take advantage of the 2MB blank space provided by luks?
+
+
+design effectively a rootkit that transparently looks for disk accesses, and
+moves the stegged data out of the way?
+
+http://en.wikipedia.org/wiki/System_Management_Mode
